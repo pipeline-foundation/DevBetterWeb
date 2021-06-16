@@ -71,7 +71,7 @@ jobs:
           dotnet test .\DevBetterWeb.sln --configuration Release --no-build
 
   cd:
-    if: needs.ci.outputs.is_push_to_default_branch
+    if: needs.ci.outputs.is_push_to_default_branch == 'true'
     name: Continuous Deployment
     needs: ci
     runs-on: ubuntu-18.04
