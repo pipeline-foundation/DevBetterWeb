@@ -16,7 +16,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     outputs:
       is_push_to_default_branch: ${{ steps.conditionals_handler.outputs.is_push_to_default_branch }}
-      os: ${{ matrix.os }}
     steps:
       - name: Data gatherer
         id: data_gatherer
@@ -79,10 +78,10 @@ jobs:
           dotnet test .\DevBetterWeb.sln --configuration Release --no-build
 
   cd:
-    if: needs.ci.outputs.is_push_to_default_branch == 'true' && needs.ci.outputs.os == 'ubuntu-18.04'
+    if: needs.ci.outputs.is_push_to_default_branch == 'true'
     name: Continuous Deployment
     needs: ci
-    runs-on: ${{ needs.ci.outputs.os }}
+    runs-on: ubuntu-18.04
     steps:
       - name: Setup .NET Core
         id: setup_dotnet_core
