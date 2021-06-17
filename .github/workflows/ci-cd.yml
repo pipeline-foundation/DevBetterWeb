@@ -1,17 +1,22 @@
 name: CI/CD Pipeline
 
-on: [push, pull_request, workflow_dispatch]
+on: [ push, pull_request, workflow_dispatch ]
+
+env:
+  AZURE_WEBAPP_NAME: devBetter
+  AZURE_GROUP_NAME: DevBetterGroup
+  AZURE_WEBAPP_PACKAGE_PATH: '.'
 
 jobs:
   ci:
     name: Continuous Integration
     strategy:
       matrix:
-        os: [ubuntu-18.04, windows-latest]
+        os: [ ubuntu-18.04, windows-latest ]
     runs-on: ${{ matrix.os }}
     outputs:
       is_push_to_default_branch: ${{ steps.conditionals_handler.outputs.is_push_to_default_branch }}
-
+      os: ${{ matrix.os }}
     steps:
       - name: Data gatherer
         id: data_gatherer
@@ -29,18 +34,21 @@ jobs:
           $defaultBranch = "${{ steps.data_gatherer.outputs.default_branch }}"
           $githubRef = "${{ github.ref }}"
           $githubEventName = "${{ github.event_name }}"
+          $currentBranch = $githubRef -replace 'refs/heads/', ''
           $isDefaultBranch = 'false'
           $isPush = 'false'
           $isPushToDefaultBranch = 'false'
-          if ( $githubRef -like "*$defaultBranch*" ) {
+
+          if ( $currentBranch -eq $defaultBranch ) {
             $isDefaultBranch = 'true'
           }
           if ( $githubEventName -eq 'push' ) {
             $isPush = 'true'
           }
-          if ( $githubRef -like "*$defaultBranch*" -and $githubEventName -eq 'push' ) {
+          if ( $currentBranch -eq $defaultBranch -and $githubEventName -eq 'push' ) {
             $isPushToDefaultBranch = 'true'
           }
+          
           Write-Output "::set-output name=is_default_branch::$(echo $isDefaultBranch)"
           Write-Output "::set-output name=is_push::$(echo $isPush)"
           Write-Output "::set-output name=is_push_to_default_branch::$(echo $isPushToDefaultBranch)"
@@ -71,16 +79,17 @@ jobs:
           dotnet test .\DevBetterWeb.sln --configuration Release --no-build
 
   cd:
-    if: needs.ci.outputs.is_push_to_default_branch == 'true'
+    if: needs.ci.outputs.is_push_to_default_branch == 'true' && needs.ci.outputs.os == 'ubuntu-18.04'
     name: Continuous Deployment
     needs: ci
-    runs-on: ubuntu-18.04
-    env:
-      AZURE_WEBAPP_NAME: devBetter
-      AZURE_GROUP_NAME: DevBetterGroup
-      AZURE_WEBAPP_PACKAGE_PATH: '.'
-
+    runs-on: ${{ needs.ci.outputs.os }}
     steps:
+      - name: Setup .NET Core
+        id: setup_dotnet_core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.101
+    
       - name: Checkout repository
         id: checkout_repo
         uses: actions/checkout@v2
@@ -88,9 +97,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Publish Web
-        id: publish_web
-        run: dotnet publish ./src/DevBetterWeb.Web/DevBetterWeb.Web.csproj `
+      - name: Publish WebApp
+        id: publish_webapp
+        run: |
+          dotnet publish ./src/DevBetterWeb.Web/DevBetterWeb.Web.csproj `
           --configuration Release `
           --output '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/WebApp'
 
