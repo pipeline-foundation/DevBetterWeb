@@ -69,13 +69,13 @@ jobs:
         id: build_solution
         shell: pwsh
         run: |
-          dotnet build .\DevBetterWeb.sln --configuration Release --output Artifacts
+          dotnet build ./DevBetterWeb.sln --configuration Release --output Artifacts
 
       - name: Run unit tests
         id: run_unit_tests
         shell: pwsh
         run: |
-          dotnet test .\DevBetterWeb.sln --configuration Release --no-build
+          dotnet test ./DevBetterWeb.sln --configuration Release --no-build
 
       - name: Publish WebApp
         id: publish_webapp
@@ -83,14 +83,19 @@ jobs:
         run: |
           dotnet publish ./src/DevBetterWeb.Web/DevBetterWeb.Web.csproj --configuration Release --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/WebApp
 
-      - name: Upload artifact for deployment job
-        id: upload_artifacts_for_deployment_job
+      - name: Upload build artifacts
+        id: upload_build_artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: Artifacts
-          path: |
-            ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/WebApp
-            ./Artifacts
+          name: Build artifacts
+          path: Artifacts/
+
+      - name: Upload publish artifacts
+        id: upload_publish_artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Publish artifacts
+          path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/WebApp/
 
   cd:
     if: needs.ci.outputs.is_push_to_default_branch == 'true'
@@ -98,12 +103,12 @@ jobs:
     needs: ci
     runs-on: ubuntu-18.04
     steps:
-      - name: Download artifacts
-        id: dl_artifacts
+      - name: Download publish artifacts
+        id: dl_publish_artifacts
         uses: actions/download-artifact@v2
         with:
-          name: Artifacts
-          path: Artifacts/
+          name: Publish artifacts
+          path: WebApp/
 
       - name: Azure webapp deploy with Publish Profile
         id: azure_webapp_deploy_with_publish_profile
