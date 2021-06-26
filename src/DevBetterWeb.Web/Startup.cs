@@ -8,6 +8,7 @@ using DevBetterWeb.Infrastructure;
 using DevBetterWeb.Infrastructure.Data;
 using DevBetterWeb.Infrastructure.PaymentHandler.StripePaymentHandler;
 using DevBetterWeb.Infrastructure.Services;
+using DevBetterWeb.Web.Services;
 using GoogleReCaptcha.V3;
 using GoogleReCaptcha.V3.Interface;
 using MediatR;
@@ -106,6 +107,9 @@ namespace DevBetterWeb.Web
       services.AddScoped<IWebhookHandlerService, WebhookHandlerService>();
       services.AddScoped<IUserLookupService, UserLookupService>();
       services.AddScoped<ICsvService, CsvService>();
+      services.AddScoped<IAlumniGraduationService, AlumniGraduationService>();
+      services.AddScoped<IGraduationCommunicationsService, GraduationCommunicationsService>();
+      services.AddScoped<IUserRoleManager, DefaultUserRoleManagerService>();
 
       //            services.Configure<AuthMessageSenderOptions>(Configuration);
 
@@ -117,6 +121,8 @@ namespace DevBetterWeb.Web
       });
 
       services.AddHttpClient<ICaptchaValidator, GoogleReCaptchaValidator>();
+
+      services.AddHostedService<DailyCheckService>();
 
     }
 
