@@ -5,6 +5,7 @@ using DevBetterWeb.Core.Exceptions;
 using DevBetterWeb.Core.Interfaces;
 using DevBetterWeb.Core.Specs;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DevBetterWeb.Core.Services
@@ -17,18 +18,21 @@ namespace DevBetterWeb.Core.Services
     private readonly IPaymentHandlerSubscription _paymentHandlerSubscription;
     private readonly IEmailService _emailService;
     private readonly IMemberRegistrationService _memberRegistrationService;
+    private readonly IAppLogger<NewMemberService> _logger;
 
     public NewMemberService(IRepository<Invitation> invitationRepository,
       IUserRoleMembershipService userRoleMembershipService,
       IPaymentHandlerSubscription paymentHandlerSubscription,
       IEmailService emailService,
-      IMemberRegistrationService memberRegistrationService)
+      IMemberRegistrationService memberRegistrationService,
+      IAppLogger<NewMemberService> logger)
     {
       _invitationRepository = invitationRepository;
       _userRoleMembershipService = userRoleMembershipService;
       _paymentHandlerSubscription = paymentHandlerSubscription;
       _emailService = emailService;
       _memberRegistrationService = memberRegistrationService;
+      _logger = logger;
     }
 
     public async Task<Invitation> CreateInvitationAsync(string email, string stripeSubscriptionId)
@@ -95,14 +99,35 @@ namespace DevBetterWeb.Core.Services
       var invite = await _invitationRepository.GetBySpecAsync(spec);
       
       if (invite is null) throw new InvitationNotFoundException($"Could not find invitation with code {inviteCode}.");
-      var subscriptionId = invite.PaymentHandlerSubscriptionId;
+      var paymentHandlerSubscriptionId = invite.PaymentHandlerSubscriptionId;
 
-      var subscriptionDateTimeRange = _paymentHandlerSubscription.GetDateTimeRange(subscriptionId);
-      // TODO this should take in the subscription plan id
-      member.AddSubscription(subscriptionDateTimeRange);
+      var subscriptionDateTimeRange = _paymentHandlerSubscription.GetDateTimeRange(paymentHandlerSubscriptionId);
+
+      var billingPeriod = _paymentHandlerSubscription.GetBillingPeriod(paymentHandlerSubscriptionId);
+
+      int devBetterSubscriptionPlanId = 1; // monthly
+
+      if(billingPeriod == Enums.BillingPeriod.Year)
+      {
+        devBetterSubscriptionPlanId = 2; // yearly
+      }
+
+      member.AddSubscription(subscriptionDateTimeRange, devBetterSubscriptionPlanId);
 
       // Member has now been created and set up from the invite used. Invite should now be deactivated
       invite.Deactivate();
+      await _invitationRepository.UpdateAsync(invite);
+
+      var activeInviteSpec = new ActiveInvitationByEmailSpec(invite.Email);
+      var moreActiveInvitesForEmail = await _invitationRepository.ListAsync(activeInviteSpec);
+      if(moreActiveInvitesForEmail.Any())
+      {
+        _logger.LogInformation($"User {invite.Email} had multiple active invites.");
+      }
+      foreach (var extraInvite in moreActiveInvitesForEmail)
+      {
+          extraInvite.Deactivate();
+      } 
       await _invitationRepository.UpdateAsync(invite);
 
       return member;

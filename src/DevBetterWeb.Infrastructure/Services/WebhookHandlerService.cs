@@ -178,8 +178,8 @@ namespace DevBetterWeb.Infrastructure.Services
 
       if(member != null)
       {
-        // TODO this should take in the subscription plan id
-        member.AddSubscription(subscriptionDateTimeRange);
+        // TODO this should take in the subscription plan id - currently hard-coded to monthly
+        member.AddSubscription(subscriptionDateTimeRange, 1);
       }
     }
   }
