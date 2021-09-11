@@ -61,6 +61,8 @@ namespace DevBetterWeb.Web
         options.MinimumSameSitePolicy = SameSiteMode.None;
       });
 
+      services.AddLogging();
+
       services.Configure<AuthMessageSenderOptions>(Configuration.GetSection("AuthMessageSenderOptions"));
       services.Configure<DiscordWebhookUrls>(Configuration.GetSection("DiscordWebhookUrls"));
       services.Configure<StripeOptions>(Configuration.GetSection("StripeOptions"));
