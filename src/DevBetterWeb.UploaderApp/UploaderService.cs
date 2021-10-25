@@ -16,7 +16,7 @@ namespace DevBetterWeb.UploaderApp
   {
     private const string MP4_FILES = "*.mp4";
     private const string MD_FILES = "*.md";
-    private const string API_KEY_NAME = "ApiKey";
+    private const string API_KEY_NAME = "API_KEY";
 
     private readonly UploadVideoService _uploadVideoService;
     private readonly GetAllVideosService _getAllVideosService;
@@ -50,14 +50,14 @@ namespace DevBetterWeb.UploaderApp
 
     public async Task SyncAsync(string folderToUpload)
     {
-      Console.WriteLine($"Getting Exist Videos.");
+      Console.WriteLine($"Getting existing videos on Vimeo.");
 
       var videos = GetVideos(folderToUpload);            
 
       var allExisVideos = await GetExistVideosAsync();
       Console.WriteLine($"Found {allExisVideos.Count} videos on Vimeo.");
 
-      Console.WriteLine($"Getting Exist Videos Done.");
+      Console.WriteLine($"Getting existing Videos DONE.");
 
       foreach (var video in videos)
       {
@@ -89,14 +89,14 @@ namespace DevBetterWeb.UploaderApp
             DateCreated = video.CreatedTime,
             DateUploaded = DateTimeOffset.UtcNow,
             Duration = video.Duration,
-            VideoId = response.Data.ToString(),
+            VideoId = videoId.ToString(),
             Password = video.Password,
             Description = video.Description,
             VideoUrl = video.Link
           };
           var getAnimatedThumbnailResult = await CreateAnimatedThumbnails(videoId);
           archiveVideo.AnimatedThumbnailUri = getAnimatedThumbnailResult.AnimatedThumbnailUri;
-          await _addVideoInfo.ExecuteAsync(archiveVideo);
+          var videoInfoResponse = await _addVideoInfo.ExecuteAsync(archiveVideo);
 
           Console.WriteLine($"{video.Name} Uploaded!");
         }
@@ -118,10 +118,11 @@ namespace DevBetterWeb.UploaderApp
       Console.WriteLine($"Creating Animated Thumbnails");
 
       Video video = new Video();
-      while(video.Status != "available")
+      while(video == null || video.Status != "available")
       {
         Thread.Sleep(20 * 1000);
-        video = (await _getVideoService.ExecuteAsync(videoId.ToString())).Data;
+        var response = await _getVideoService.ExecuteAsync(videoId.ToString());
+        video = response.Data;
       }
 
       var startAnimation = GetRandomStart(video.Duration>6? video.Duration:0);
@@ -139,8 +140,14 @@ namespace DevBetterWeb.UploaderApp
       while (statusAnimatedThumbnails != "completed")
       {
         var statusResult = await _getStatusAnimatedThumbnailService.ExecuteAsync(getStatusAnimatedThumbnailRequest);
-
-        statusAnimatedThumbnails = statusResult.Data.Status;
+        if (statusResult.Code == System.Net.HttpStatusCode.InternalServerError || statusResult.Code == System.Net.HttpStatusCode.Unauthorized || statusResult.Code == System.Net.HttpStatusCode.NotFound)
+        {
+          statusAnimatedThumbnails = string.Empty;
+        }else
+        {
+          statusAnimatedThumbnails = statusResult.Data.Status;
+        }
+        
         Thread.Sleep(5 * 1000);
       }
       var getAnimatedThumbnailResult = await _getAnimatedThumbnailService.ExecuteAsync(getStatusAnimatedThumbnailRequest);
@@ -153,9 +160,13 @@ namespace DevBetterWeb.UploaderApp
     private async Task<List<Video>> GetExistVideosAsync()
     {      
       var getAllVideosRequest = new GetAllVideosRequest(ServiceConstants.ME);
-      var allExisVideos = await _getAllVideosService.ExecuteAsync(getAllVideosRequest);
+      var allExistingVideos = await _getAllVideosService.ExecuteAsync(getAllVideosRequest);
 
-      return allExisVideos.Data.Data;
+      if(allExistingVideos.Code != System.Net.HttpStatusCode.OK)
+      {
+        throw new Exception($"Non-successful status code: {allExistingVideos.Code}");
+      }
+      return allExistingVideos.Data.Data;
     }
 
     private List<Video> GetVideos(string folderPath)
