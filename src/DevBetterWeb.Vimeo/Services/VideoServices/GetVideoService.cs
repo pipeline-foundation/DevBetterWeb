@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Ardalis.ApiCaller;
+using Ardalis.ApiClient;
 using Microsoft.Extensions.Logging;
 using DevBetterWeb.Vimeo.Extensions;
 using DevBetterWeb.Vimeo.Models;
@@ -36,7 +36,10 @@ namespace DevBetterWeb.Vimeo.Services.VideoServices
       }
       catch (Exception exception)
       {
-        _logger.LogError(exception);
+        if (!exception.Message.Contains("The JSON value could not be converted to System.Collections.Generic.List`1[System.String]"))
+        {
+          _logger.LogError(exception);
+        }
         return HttpResponse<Video>.FromException(exception.Message);
       }
     }
