@@ -73,6 +73,14 @@
 	.padding-10 {
 		padding: 10px;
 	}
+
+    .paging {
+        display: flex;
+    }
+
+    .page-item {
+        border-radius: 0px !important;
+    }
 </style>
 
 <h3>Recorded Coaching Sessions</h3>
@@ -80,9 +88,82 @@
 <div asp-authorize asp-roles="Administrators,Members,Alumni">
 	<div id="members-videos-list" class="row">
 	</div>		
+    <div class="row">
+        <ul id="pagination-demo" class="pagination-md paging"></ul>
+    </div>
+    
 </div>
 
 
 @section scripts{
     <script src="~/js/videos.js" asp-append-version="true" asp-authorize asp-roles="Administrators,Members,Alumni"></script>
 }
+
+<script>
+    function numPages() {
+        return Math.ceil(recordsTotal / recordsPage);
+    }
+    
+    function refreshMembersVideos(currentPageIndex) {
+        currentPage = currentPageIndex;
+        var userRole = '@(User.IsInRole("Administrators,Members,Alumni") ? "true" : "false")';
+        if (userRole) {
+            $.ajax({
+                type: "POST",
+                url: "/videos/list",
+                data: { draw: '1', start: (currentPageIndex*recordsPage), length: recordsPage.toString() },
+                dataType: "json",
+                success: function (videosReponse) {
+                    var divHtml = "";
+                    if (videosReponse && videosReponse.data && videosReponse.data.length > 0) {
+                        recordsTotal = videosReponse.recordsTotal;
+                        videosReponse.data.forEach(video => {
+                            divHtml += "<div class='col col-sm-12 col-md-3 col-lg-3 padding-10'><a href='Videos/Details/" + video?.videoId + "'><img class='img-fluid' style='height: 160px' src='" + video?.animatedThumbnailUri + "'></a><h3>" + video?.title + "</h3><span class='style-scope ytd-video-meta-block'>" + video?.views + " views</span><span class='style-scope ytd-video-meta-block'> " + timeSince(new Date(video?.dateCreated)) + " ago</span></div>";
+                        });
+                    }
+                    document.getElementById('members-videos-list').innerHTML = divHtml;
+
+                    $('#pagination-demo').twbsPagination({
+                        totalPages: numPages(),
+                        visiblePages: 7,
+                        startPage: page,
+                        onPageClick: function (event, page) {
+                            refreshMembersVideos(page - 1);
+                        }
+                    });               
+                },
+                error: function (errMsg) {
+                    alert(errMsg);
+                }
+            });
+        }
+    }
+
+    function timeSince(date) {
+
+        var seconds = Math.floor((new Date() - date) / 1000);
+
+        var interval = seconds / 31536000;
+
+        if (interval > 1) {
+            return Math.floor(interval) + " years";
+        }
+        interval = seconds / 2592000;
+        if (interval > 1) {
+            return Math.floor(interval) + " months";
+        }
+        interval = seconds / 86400;
+        if (interval > 1) {
+            return Math.floor(interval) + " days";
+        }
+        interval = seconds / 3600;
+        if (interval > 1) {
+            return Math.floor(interval) + " hours";
+        }
+        interval = seconds / 60;
+        if (interval > 1) {
+            return Math.floor(interval) + " minutes";
+        }
+        return Math.floor(seconds) + " seconds";
+    }
+</script>
