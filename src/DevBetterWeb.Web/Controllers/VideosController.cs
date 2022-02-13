@@ -215,8 +215,25 @@ public class VideosController : Controller
       return Unauthorized();
     }
 
-    await _videosService.UpdateVideosThumbnailWithoutMessages();
+    await _videosService.UpdateVideosThumbnail(null);
     
+    return Ok();
+  }
+
+  [AllowAnonymous]
+  [HttpGet("delete-all-videos-no-vimeo")]
+  public async Task<IActionResult> DeleteAllVideosNoVimeoAsync()
+  {
+    var apiKey = Request.Headers[Constants.ConfigKeys.ApiKey];
+
+    if (apiKey != _expectedApiKey)
+    {
+      return Unauthorized();
+    }
+
+    await _videosService.DeleteVideosNotExistOnVimeoFromVimeo(null);
+    await _videosService.DeleteVideosNotExistOnVimeoFromDatabase(null);
+
     return Ok();
   }
 
