@@ -141,18 +141,20 @@ public class VideosController : Controller
     var existVideo = await _repository.GetBySpecAsync(spec);
     if (existVideo == null)
     {
-      // TODO: enable after upload all videos.
-      //var videoAddedEvent = new VideoAddedEvent(archiveVideo);
-      //archiveVideo.Events.Add(videoAddedEvent);
-        
       archiveVideo = await _repository.AddAsync(archiveVideo);
+      var videoAddedEvent = new VideoAddedEvent(archiveVideo);
+      archiveVideo.Events.Add(videoAddedEvent);
     }
     else
     {
       existVideo.Description = archiveVideo.Description;
       existVideo.Title = archiveVideo.Title;
       existVideo.Duration = archiveVideo.Duration;
-      existVideo.AnimatedThumbnailUri = archiveVideo.AnimatedThumbnailUri;
+      if (!string.IsNullOrEmpty(archiveVideo.AnimatedThumbnailUri))
+      {
+        existVideo.AnimatedThumbnailUri = archiveVideo.AnimatedThumbnailUri;
+      }
+      
       await _repository.UpdateAsync(existVideo);
     }
 
