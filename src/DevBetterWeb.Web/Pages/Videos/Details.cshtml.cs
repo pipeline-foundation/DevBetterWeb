@@ -46,7 +46,7 @@ public class DetailsModel : PageModel
     var oEmbed = await _getOEmbedVideoService.ExecuteAsync(video.Data.Link);
     if (oEmbed?.Data == null) return NotFound($"Video Not Found {videoId}");
 
-    var videoSpec = new ArchiveVideoByVideoIdSpec(videoId);
+    var videoSpec = new ArchiveVideoByVideoIdWithMemberFavoritesSpec(videoId);
     var archiveVideo = await _repository.GetBySpecAsync(videoSpec);
     if (archiveVideo == null) return NotFound($"Video Not Found {videoId}");
 
@@ -70,7 +70,7 @@ public class DetailsModel : PageModel
       .AddStartTime(startTime)
       .BuildHtml(video.Data.Link);
     OEmbedViewModel.IsMemberFavorite = member.FavoriteArchiveVideos.Any(fav => fav.ArchiveVideoId == archiveVideo.Id);
-
+	OEmbedViewModel.MemberFavoritesCount = archiveVideo.MemberFavorites.Count();
     return Page();
   }
 }
