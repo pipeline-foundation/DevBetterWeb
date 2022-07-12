@@ -29,6 +29,7 @@ public class AppDbContext : DbContext
 	}
 
 	public DbSet<ArchiveVideo>? ArchiveVideos { get; set; }
+	public DbSet<VideoComment>? VideoComments { get; set; }
 	public DbSet<Question>? Questions { get; set; }
 	public DbSet<Member>? Members { get; set; }
 	public DbSet<Book>? Books { get; set; }
@@ -37,6 +38,7 @@ public class AppDbContext : DbContext
 	public DbSet<BillingActivity>? BillingActivities { get; set; }
 	public DbSet<DailyCheck>? DailyChecks { get; set; }
 	public DbSet<MemberSubscriptionPlan>? MemberSubscriptionPlan { get; set; }
+	public DbSet<MemberVideoProgress>? MembersVideosProgress { get; set; }
 
 	public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
 	{
