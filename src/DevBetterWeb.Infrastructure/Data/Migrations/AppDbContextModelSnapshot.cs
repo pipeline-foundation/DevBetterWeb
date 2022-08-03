@@ -17,7 +17,7 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.6")
+                .HasAnnotation("ProductVersion", "6.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
@@ -113,6 +113,11 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int?>("BookCategoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<string>("Details")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -127,7 +132,42 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BookCategoryId");
+
                     b.ToTable("Books");
+                });
+
+            modelBuilder.Entity("DevBetterWeb.Core.Entities.BookCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BookCategories");
+                });
+
+            modelBuilder.Entity("DevBetterWeb.Core.Entities.CoachingSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<DateTime>("StartAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CoachingSessions", (string)null);
                 });
 
             modelBuilder.Entity("DevBetterWeb.Core.Entities.DailyCheck", b =>
@@ -350,21 +390,56 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
-                    b.Property<int>("ArchiveVideoId")
+                    b.Property<int?>("ArchiveVideoId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CoachingSessionId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MemberId")
                         .HasColumnType("int");
 
                     b.Property<string>("QuestionText")
+                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int>("TimestampSeconds")
+                    b.Property<int>("Votes")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ArchiveVideoId");
+                    b.HasIndex("CoachingSessionId");
 
-                    b.ToTable("Question", (string)null);
+                    b.HasIndex("MemberId");
+
+                    b.ToTable("Questions", (string)null);
+                });
+
+            modelBuilder.Entity("DevBetterWeb.Core.Entities.QuestionVote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int>("MemberId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId");
+
+                    b.HasIndex("QuestionId");
+
+                    b.ToTable("QuestionVote");
                 });
 
             modelBuilder.Entity("DevBetterWeb.Core.Entities.VideoComment", b =>
@@ -481,6 +556,15 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
 
                     b.Navigation("Details")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("DevBetterWeb.Core.Entities.Book", b =>
+                {
+                    b.HasOne("DevBetterWeb.Core.Entities.BookCategory", "BookCategory")
+                        .WithMany("Books")
+                        .HasForeignKey("BookCategoryId");
+
+                    b.Navigation("BookCategory");
                 });
 
             modelBuilder.Entity("DevBetterWeb.Core.Entities.Member", b =>
@@ -639,11 +723,38 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("DevBetterWeb.Core.Entities.Question", b =>
                 {
-                    b.HasOne("DevBetterWeb.Core.Entities.ArchiveVideo", null)
+                    b.HasOne("DevBetterWeb.Core.Entities.CoachingSession", "CoachingSession")
                         .WithMany("Questions")
-                        .HasForeignKey("ArchiveVideoId")
+                        .HasForeignKey("CoachingSessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("DevBetterWeb.Core.Entities.Member", "MemberWhoCreate")
+                        .WithMany("Questions")
+                        .HasForeignKey("MemberId")
+                        .IsRequired();
+
+                    b.Navigation("CoachingSession");
+
+                    b.Navigation("MemberWhoCreate");
+                });
+
+            modelBuilder.Entity("DevBetterWeb.Core.Entities.QuestionVote", b =>
+                {
+                    b.HasOne("DevBetterWeb.Core.Entities.Member", "Member")
+                        .WithMany("QuestionVotes")
+                        .HasForeignKey("MemberId")
+                        .IsRequired();
+
+                    b.HasOne("DevBetterWeb.Core.Entities.Question", "Question")
+                        .WithMany("QuestionVotes")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Member");
+
+                    b.Navigation("Question");
                 });
 
             modelBuilder.Entity("DevBetterWeb.Core.Entities.VideoComment", b =>
@@ -691,7 +802,15 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
                     b.Navigation("MemberFavorites");
 
                     b.Navigation("MembersVideoProgress");
+                });
 
+            modelBuilder.Entity("DevBetterWeb.Core.Entities.BookCategory", b =>
+                {
+                    b.Navigation("Books");
+                });
+
+            modelBuilder.Entity("DevBetterWeb.Core.Entities.CoachingSession", b =>
+                {
                     b.Navigation("Questions");
                 });
 
@@ -705,7 +824,16 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
 
                     b.Navigation("MemberVideosProgress");
 
+                    b.Navigation("QuestionVotes");
+
+                    b.Navigation("Questions");
+
                     b.Navigation("VideosComments");
+                });
+
+            modelBuilder.Entity("DevBetterWeb.Core.Entities.Question", b =>
+                {
+                    b.Navigation("QuestionVotes");
                 });
 
             modelBuilder.Entity("DevBetterWeb.Core.Entities.VideoComment", b =>
