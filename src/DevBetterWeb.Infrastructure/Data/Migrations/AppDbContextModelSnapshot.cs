@@ -17,7 +17,7 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.7")
+                .HasAnnotation("ProductVersion", "6.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
@@ -122,6 +122,9 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<int?>("MemberWhoUploadId")
+                        .HasColumnType("int");
+
                     b.Property<string>("PurchaseUrl")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -133,6 +136,8 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BookCategoryId");
+
+                    b.HasIndex("MemberWhoUploadId");
 
                     b.ToTable("Books");
                 });
@@ -622,7 +627,13 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
                         .WithMany("Books")
                         .HasForeignKey("BookCategoryId");
 
+                    b.HasOne("DevBetterWeb.Core.Entities.Member", "MemberWhoUpload")
+                        .WithMany("UploadedBooks")
+                        .HasForeignKey("MemberWhoUploadId");
+
                     b.Navigation("BookCategory");
+
+                    b.Navigation("MemberWhoUpload");
                 });
 
             modelBuilder.Entity("DevBetterWeb.Core.Entities.Member", b =>
@@ -885,6 +896,8 @@ namespace DevBetterWeb.Infrastructure.Data.Migrations
                     b.Navigation("QuestionVotes");
 
                     b.Navigation("Questions");
+
+                    b.Navigation("UploadedBooks");
 
                     b.Navigation("VideosComments");
                 });
