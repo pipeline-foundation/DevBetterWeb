@@ -12,7 +12,7 @@
     <PackageVersion Include="Ardalis.HttpClientTestExtensions" Version="4.2.0" />
     <PackageVersion Include="Ardalis.ListStartupServices" Version="1.1.4" />
     <PackageVersion Include="Ardalis.Result" Version="7.1.0" />
-    <PackageVersion Include="Ardalis.Result.AspNetCore" Version="7.1.0" />
+    <PackageVersion Include="Ardalis.Result.AspNetCore" Version="7.2.0" />
     <PackageVersion Include="Ardalis.SmartEnum" Version="7.0.0" />
     <PackageVersion Include="Ardalis.Specification" Version="7.0.0" />
     <PackageVersion Include="Ardalis.Specification.EntityFrameworkCore" Version="7.0.0" />
@@ -48,7 +48,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="7.0.13" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="7.0.13" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="7.0.13" />
-    <PackageVersion Include="Microsoft.CodeCoverage" Version="17.7.2" />
+    <PackageVersion Include="Microsoft.CodeCoverage" Version="17.8.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="7.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.13" />
@@ -85,11 +85,11 @@
     <PackageVersion Include="WindowsAzure.Storage" Version="9.3.3" />
     <PackageVersion Include="xunit" Version="2.6.1" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.3" />
-    <PackageVersion Include="xunit.runner.console" Version="2.5.0">
+    <PackageVersion Include="xunit.runner.console" Version="2.6.4">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageVersion>
-    <PackageVersion Include="xunit.runner.reporters" Version="2.5.0" />
+    <PackageVersion Include="xunit.runner.reporters" Version="2.6.4" />
     <PackageVersion Include="XunitXml.TestLogger" Version="3.1.17" />
   </ItemGroup>
 </Project>
