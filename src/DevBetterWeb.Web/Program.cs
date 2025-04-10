@@ -35,11 +35,20 @@ using NimblePros.Vimeo.Extensions;
 // 29 Aug 2023 - Getting a nullref in here somewhere maybe? Also a stack overflow during startup somewhere.
 
 var builder = WebApplication.CreateBuilder(args);
+Console.WriteLine($"Startup ENV: {builder.Environment.EnvironmentName}");
+var isProduction = builder.Environment.IsEnvironment("Production");
+var isTesting = builder.Environment.IsEnvironment("Testing");
 
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 
-builder.Host.UseSerilog((_, config) => config.ReadFrom.Configuration(builder.Configuration));
-
+if (!isTesting)
+{
+	builder.Host.UseSerilog((_, config) => config.ReadFrom.Configuration(builder.Configuration));
+}
+else
+{
+	builder.Host.UseSerilog((_, config) => config.MinimumLevel.Information().WriteTo.Console());
+}
 builder.Services.Configure<CookiePolicyOptions>(options =>
 {
 	options.CheckConsentNeeded = context => true;
@@ -55,38 +64,26 @@ builder.Services.Configure<SubscriptionPlanOptions>(builder.Configuration.GetSec
 builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection("ApiSettings"));
 
 
-// PRODUCTION SERVICES
-if (builder.Environment.EnvironmentName.ToLower() == "production")
+if (isProduction)
 {
 	builder.Services.AddDbContext<AppDbContext>(options =>
-			options.UseSqlServer(builder.Configuration!
-					.GetConnectionString(Constants.DEFAULT_CONNECTION_STRING_NAME)));
+		options.UseSqlServer(builder.Configuration
+			.GetConnectionString(Constants.DEFAULT_CONNECTION_STRING_NAME)));
 
-	// configure Stripe
-	string stripeApiKey = builder.Configuration!
-		.GetSection("StripeOptions")!
-		.GetSection("StripeSecretKey")!.Value!;
-	builder.Services.AddStripeServices(stripeApiKey);
-
+	// Other prod-only services
+	builder.Services.AddStripeServices(
+		builder.Configuration.GetSection("StripeOptions")["StripeSecretKey"]!);
 	builder.Services.AddDailyCheckServices();
 	builder.Services.AddStartupNotificationService();
 }
-
-// TEST SERVICES
-//if (builder.Environment.EnvironmentName.ToLower() == "testing")
-//{
-//	string dbName = Guid.NewGuid().ToString();
-
-//	builder.Services.AddDbContext<AppDbContext>(options =>
-//		options.UseInMemoryDatabase(dbName));
-//}
-
-if (!builder.Services.Any(x => x.ServiceType == typeof(AppDbContext)))
+else if (!isTesting)
 {
+	// Fallback for other non-test, non-prod envs (e.g., Development, Staging)
 	builder.Services.AddDbContext<AppDbContext>(options =>
-			options.UseSqlServer(builder.Configuration
-					.GetConnectionString(Constants.DEFAULT_CONNECTION_STRING_NAME)));
+		options.UseSqlServer(builder.Configuration
+			.GetConnectionString(Constants.DEFAULT_CONNECTION_STRING_NAME)));
 }
+
 builder.Services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
 
 var webProjectAssembly = typeof(Program).Assembly;
@@ -216,7 +213,7 @@ static async Task SeedDatabase(IHost host)
 	var context = services.GetRequiredService<AppDbContext>();
 	var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 	SeedData.PopulateInitData(context, userManager);
-	
+
 	if (environment == "Production")
 	{
 		return;
@@ -264,9 +261,9 @@ async Task ApplyLocalMigrationsAsync(WebApplication webApplication)
 
 	var app = scope.ServiceProvider.GetRequiredService<ILocalMigrationService<AppDbContext>>();
 
-	var environment        = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? string.Empty;
+	var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? string.Empty;
 	bool.TryParse(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), out var runningInContainer);
-	
+
 	await identity.ApplyLocalMigrationAsync(environment, runningInContainer);
 	await app.ApplyLocalMigrationAsync(environment, runningInContainer);
 }
