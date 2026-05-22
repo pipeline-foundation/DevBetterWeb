@@ -1,0 +1,187 @@
+name: Bug Reproduction Video
+
+on:
+  issues:
+    types:
+      - labeled
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+jobs:
+  reproduce-bug:
+    if: github.event.label.name == 'bug'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      ISSUE_TITLE: ${{ github.event.issue.title }}
+      ISSUE_BODY: ${{ github.event.issue.body }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      ISSUE_URL: ${{ github.event.issue.html_url }}
+      REPO_NAME: ${{ github.repository }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      #
+      # ---------------------------------------------------------
+      # OPTIONAL:
+      # Customize these steps for your application.
+      # ---------------------------------------------------------
+      #
+
+      - name: Restore .NET dependencies
+        run: dotnet restore
+
+      - name: Build application
+        run: dotnet build --no-restore
+
+      #
+      # Example app startup
+      # Replace this with your actual startup command.
+      #
+      - name: Start application
+        run: |
+          dotnet run --project src/Web/Web.csproj &
+          echo $! > app.pid
+
+      - name: Wait for application startup
+        run: |
+          npx wait-on https://localhost:5001
+        shell: bash
+
+      #
+      # ---------------------------------------------------------
+      # Generate Playwright test dynamically from issue text
+      # ---------------------------------------------------------
+      #
+
+      - name: Initialize Playwright project
+        run: |
+          npm init -y
+          npm install @playwright/test
+          npx playwright install --with-deps
+
+      - name: Generate reproduction script
+        run: |
+          mkdir -p tests
+
+          cat << 'EOF' > tests/repro.spec.js
+          const { test, expect } = require('@playwright/test');
+
+          test.use({
+            video: 'on',
+            trace: 'on',
+            screenshot: 'only-on-failure'
+          });
+
+          test('attempt reproduction from github issue', async ({ page }) => {
+
+            //
+            // TODO:
+            // Replace this with real AI-generated logic.
+            //
+            // Current MVP:
+            // Open homepage and capture video.
+            //
+
+            await page.goto('https://localhost:5001', {
+              waitUntil: 'networkidle'
+            });
+
+            await page.waitForTimeout(5000);
+
+            //
+            // Example:
+            // Could later parse issue body into actions.
+            //
+
+            console.log('Issue Title:');
+            console.log(process.env.ISSUE_TITLE);
+
+            console.log('Issue Body:');
+            console.log(process.env.ISSUE_BODY);
+          });
+          EOF
+
+      - name: Run Playwright reproduction
+        run: |
+          npx playwright test \
+            --reporter=list
+
+      #
+      # ---------------------------------------------------------
+      # Upload artifacts
+      # ---------------------------------------------------------
+      #
+
+      - name: Upload Playwright artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: repro-artifacts-issue-${{ github.event.issue.number }}
+          path: |
+            test-results
+            playwright-report
+          retention-days: 14
+
+      #
+      # ---------------------------------------------------------
+      # Comment on issue
+      # ---------------------------------------------------------
+      #
+
+      - name: Comment on issue with artifact link
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl =
+              `https://github.com/${context.repo.owner}/${context.repo.repo}` +
+              `/actions/runs/${context.runId}`;
+
+            const body = `
+            🤖 Automated reproduction attempt completed.
+
+            ## Issue
+            #${process.env.ISSUE_NUMBER}
+
+            ## Artifacts
+            - 🎥 Playwright video
+            - 📷 Screenshots
+            - 🧭 Trace files
+            - 📄 Console output
+
+            Download artifacts from the workflow run:
+
+            ${runUrl}
+
+            ---
+            Generated automatically from issue label \`bug\`.
+            `;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+      - name: Cleanup app
+        if: always()
+        run: |
+          if [ -f app.pid ]; then
+            kill $(cat app.pid) || true
+          fi
