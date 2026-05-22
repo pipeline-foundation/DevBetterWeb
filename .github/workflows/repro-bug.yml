@@ -10,6 +10,16 @@ permissions:
   issues: write
   actions: read
 
+env:
+  DOTNET_VERSION: 10.0.x
+
+  # Set one or both.
+  SOLUTION_FILE: DevBetterWeb.slnx
+  PROJECT_FILE: src/DevBetterWeb.Web/DevBetterWeb.Web.csproj
+
+  APP_URL: https://localhost:5001
+  APP_STARTUP_COMMAND: dotnet run --project src/Web/Web.csproj
+
 jobs:
   reproduce-bug:
     if: github.event.label.name == 'bug'
@@ -35,45 +45,41 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
-
-      #
-      # ---------------------------------------------------------
-      # OPTIONAL:
-      # Customize these steps for your application.
-      # ---------------------------------------------------------
-      #
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore .NET dependencies
-        run: dotnet restore
+        run: |
+          if [ -n "${SOLUTION_FILE}" ] && [ -f "${SOLUTION_FILE}" ]; then
+            dotnet restore "${SOLUTION_FILE}"
+          elif [ -n "${PROJECT_FILE}" ] && [ -f "${PROJECT_FILE}" ]; then
+            dotnet restore "${PROJECT_FILE}"
+          else
+            dotnet restore
+          fi
 
       - name: Build application
-        run: dotnet build --no-restore
+        run: |
+          if [ -n "${SOLUTION_FILE}" ] && [ -f "${SOLUTION_FILE}" ]; then
+            dotnet build "${SOLUTION_FILE}" --no-restore
+          elif [ -n "${PROJECT_FILE}" ] && [ -f "${PROJECT_FILE}" ]; then
+            dotnet build "${PROJECT_FILE}" --no-restore
+          else
+            dotnet build --no-restore
+          fi
 
-      #
-      # Example app startup
-      # Replace this with your actual startup command.
-      #
       - name: Start application
         run: |
-          dotnet run --project src/Web/Web.csproj &
+          ${APP_STARTUP_COMMAND} &
           echo $! > app.pid
 
       - name: Wait for application startup
         run: |
-          npx wait-on https://localhost:5001
-        shell: bash
-
-      #
-      # ---------------------------------------------------------
-      # Generate Playwright test dynamically from issue text
-      # ---------------------------------------------------------
-      #
+          npx wait-on "${APP_URL}"
 
       - name: Initialize Playwright project
         run: |
           npm init -y
-          npm install @playwright/test
+          npm install @playwright/test wait-on
           npx playwright install --with-deps
 
       - name: Generate reproduction script
@@ -81,7 +87,7 @@ jobs:
           mkdir -p tests
 
           cat << 'EOF' > tests/repro.spec.js
-          const { test, expect } = require('@playwright/test');
+          const { test } = require('@playwright/test');
 
           test.use({
             video: 'on',
@@ -90,25 +96,11 @@ jobs:
           });
 
           test('attempt reproduction from github issue', async ({ page }) => {
-
-            //
-            // TODO:
-            // Replace this with real AI-generated logic.
-            //
-            // Current MVP:
-            // Open homepage and capture video.
-            //
-
-            await page.goto('https://localhost:5001', {
+            await page.goto(process.env.APP_URL, {
               waitUntil: 'networkidle'
             });
 
             await page.waitForTimeout(5000);
-
-            //
-            // Example:
-            // Could later parse issue body into actions.
-            //
 
             console.log('Issue Title:');
             console.log(process.env.ISSUE_TITLE);
@@ -120,16 +112,10 @@ jobs:
 
       - name: Run Playwright reproduction
         run: |
-          npx playwright test \
-            --reporter=list
-
-      #
-      # ---------------------------------------------------------
-      # Upload artifacts
-      # ---------------------------------------------------------
-      #
+          npx playwright test --reporter=list
 
       - name: Upload Playwright artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: repro-artifacts-issue-${{ github.event.issue.number }}
@@ -138,13 +124,8 @@ jobs:
             playwright-report
           retention-days: 14
 
-      #
-      # ---------------------------------------------------------
-      # Comment on issue
-      # ---------------------------------------------------------
-      #
-
       - name: Comment on issue with artifact link
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
@@ -158,6 +139,11 @@ jobs:
             ## Issue
             #${process.env.ISSUE_NUMBER}
 
+            ## Configuration
+            - Solution: \`${process.env.SOLUTION_FILE || '(not set)'}\`
+            - Project: \`${process.env.PROJECT_FILE || '(not set)'}\`
+            - App URL: \`${process.env.APP_URL}\`
+
             ## Artifacts
             - 🎥 Playwright video
             - 📷 Screenshots
@@ -167,9 +153,6 @@ jobs:
             Download artifacts from the workflow run:
 
             ${runUrl}
-
-            ---
-            Generated automatically from issue label \`bug\`.
             `;
 
             await github.rest.issues.createComment({
