@@ -64,7 +64,7 @@ jobs:
       - name: Resolve target context
         id: target
         # Pinned to v7.0.1 commit SHA for supply-chain safety.
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        uses: actions/github-script@v9
         with:
           script: |
             const isDispatch = context.eventName === 'workflow_dispatch';
@@ -152,19 +152,19 @@ jobs:
             core.setOutput('issue_number', String(issueNumber));
 
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ steps.target.outputs.checkout_ref }}
           # Don't leave the GITHUB_TOKEN in .git/config — we only need to read.
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        uses: actions/setup-node@v6
         with:
           node-version: 22
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -280,7 +280,7 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@v7
         with:
           name: repro-artifacts-${{ steps.target.outputs.issue_number }}
           path: |
@@ -292,7 +292,7 @@ jobs:
 
       - name: Comment on issue or PR with artifact link
         if: always() && env.ISSUE_NUMBER != ''
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@v9
         with:
           script: |
             const runUrl =
